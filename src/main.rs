@@ -47,16 +47,31 @@ fn has_path(matrix: &Vec<Vec<u8>>) -> bool {
     false
 }
 
+fn simulate(n: usize, m: usize, steps: usize, size: usize) -> Vec<(f64, f64)> {
+    let mut stats = Vec::new();
+    let step_size = 1.0 / steps as f64;
+    for i in 0..steps {
+        let p = step_size * i as f64;
+        let mut num_paths = 0;
+        for _ in 0..size {
+            let matrix = create_matrix(n, m, p);
+            if has_path(&matrix) {
+                num_paths += 1;
+            }
+        }
+        let theta = num_paths as f64 / size as f64;
+        stats.push((p, theta));
+    }
+    stats
+}
+
 fn main() {
     let n = 10;
     let m = 10;
-    let p = 0.5;
-    let matrix = create_matrix(n, m, p);
-    for i in 0..n {
-        for j in 0..m {
-            print!("{}", matrix[i][j]);
-        }
-        println!();
+    let steps = 100;
+    let size = 1000;
+    let stats = simulate(n, m, steps, size);
+    for (p, theta) in stats {
+        println!("{:.2},{:.2}", p, theta);
     }
-    println!("Has path: {}", has_path(&matrix));
 }
