@@ -1,6 +1,24 @@
+use clap::Parser;
 use csv::Writer;
 use plotters::prelude::*;
 use rand::prelude::*;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Config {
+    #[arg(help = "Number of rows in the matrix", short, default_value_t = 10)]
+    n: usize,
+    #[arg(help = "Number of columns in the matrix", short, default_value_t = 10)]
+    m: usize,
+    #[arg(help = "Number of steps in the simulation", long, default_value_t = 100)]
+    steps: usize,
+    #[arg(
+        help = "Number of simulations to run for each step",
+        long,
+        default_value_t = 1000
+    )]
+    size: usize,
+}
 
 fn create_matrix(n: usize, m: usize, p: f64) -> Vec<Vec<u8>> {
     let mut rng = rand::thread_rng();
@@ -94,11 +112,8 @@ fn plot_stats(stats: &[(f64, f64)]) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn main() {
-    let n = 10;
-    let m = 10;
-    let steps = 100;
-    let size = 1000;
-    let stats = simulate(n, m, steps, size);
+    let config = Config::parse();
+    let stats = simulate(config.n, config.m, config.steps, config.size);
 
     plot_stats(&stats).expect("Unable to plot");
 
