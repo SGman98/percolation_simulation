@@ -1,4 +1,5 @@
 use csv::Writer;
+use plotters::prelude::*;
 use rand::prelude::*;
 
 fn create_matrix(n: usize, m: usize, p: f64) -> Vec<Vec<u8>> {
@@ -66,12 +67,40 @@ fn simulate(n: usize, m: usize, steps: usize, size: usize) -> Vec<(f64, f64)> {
     stats
 }
 
+fn plot_stats(stats: &[(f64, f64)]) -> Result<(), Box<dyn std::error::Error>> {
+    let root = BitMapBackend::new("plot.png", (640, 480)).into_drawing_area();
+    root.fill(&WHITE)?;
+
+    let x_min = 0.0;
+    let x_max = 1.0;
+    let y_min = 0.0;
+    let y_max = 1.0;
+
+    let mut chart = ChartBuilder::on(&root)
+        .caption("Percolation Threshold", ("sans-serif", 50))
+        .margin(5)
+        .set_label_area_size(LabelAreaPosition::Left, 50)
+        .set_label_area_size(LabelAreaPosition::Bottom, 50)
+        .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+
+    chart.configure_mesh().x_labels(10).y_labels(10).draw()?;
+
+    chart.draw_series(LineSeries::new(
+        stats.iter().map(|(p, theta)| (*p, *theta)),
+        &RED,
+    ))?;
+
+    Ok(())
+}
+
 fn main() {
     let n = 10;
     let m = 10;
     let steps = 100;
     let size = 1000;
     let stats = simulate(n, m, steps, size);
+
+    plot_stats(&stats).expect("Unable to plot");
 
     let mut wtr = Writer::from_path("stats.csv").expect("Unable to create csv");
     wtr.write_record(&["p", "θ(p)"])
