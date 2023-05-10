@@ -1,3 +1,4 @@
+use csv::Writer;
 use rand::prelude::*;
 
 fn create_matrix(n: usize, m: usize, p: f64) -> Vec<Vec<u8>> {
@@ -71,7 +72,14 @@ fn main() {
     let steps = 100;
     let size = 1000;
     let stats = simulate(n, m, steps, size);
+
+    let mut wtr = Writer::from_path("stats.csv").expect("Unable to create csv");
+    wtr.write_record(&["p", "θ(p)"])
+        .expect("Unable to write record");
     for (p, theta) in stats {
-        println!("{:.2},{:.2}", p, theta);
+        wtr.serialize((p, theta)).expect("Unable to write record");
     }
+    wtr.flush().expect("Unable to flush");
+
+    println!("Done!");
 }
