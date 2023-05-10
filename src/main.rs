@@ -2,6 +2,7 @@ use clap::Parser;
 use csv::Writer;
 use plotters::prelude::*;
 use rand::prelude::*;
+use tokio::task;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -10,7 +11,11 @@ struct Config {
     n: usize,
     #[arg(help = "Number of columns in the matrix", short, default_value_t = 10)]
     m: usize,
-    #[arg(help = "Number of steps in the simulation", long, default_value_t = 100)]
+    #[arg(
+        help = "Number of steps in the simulation",
+        long,
+        default_value_t = 100
+    )]
     steps: usize,
     #[arg(
         help = "Number of simulations to run for each step",
@@ -67,19 +72,28 @@ fn has_path(matrix: &Vec<Vec<u8>>) -> bool {
     false
 }
 
-fn simulate(n: usize, m: usize, steps: usize, size: usize) -> Vec<(f64, f64)> {
-    let mut stats = Vec::new();
+async fn simulate_single_step(n: usize, m: usize, p: f64, size: usize) -> f64 {
+    let mut num_paths = 0;
+    for _ in 0..size {
+        let matrix = create_matrix(n, m, p);
+        if has_path(&matrix) {
+            num_paths += 1;
+        }
+    }
+    num_paths as f64 / size as f64
+}
+
+async fn simulate(n: usize, m: usize, steps: usize, size: usize) -> Vec<(f64, f64)> {
     let step_size = 1.0 / steps as f64;
+    let mut tasks = Vec::new();
     for i in 0..steps {
         let p = step_size * i as f64;
-        let mut num_paths = 0;
-        for _ in 0..size {
-            let matrix = create_matrix(n, m, p);
-            if has_path(&matrix) {
-                num_paths += 1;
-            }
-        }
-        let theta = num_paths as f64 / size as f64;
+        let task = task::spawn(simulate_single_step(n, m, p, size));
+        tasks.push((p, task));
+    }
+    let mut stats = Vec::new();
+    for (p, task) in tasks {
+        let theta = task.await.unwrap();
         stats.push((p, theta));
     }
     stats
@@ -111,9 +125,10 @@ fn plot_stats(stats: &[(f64, f64)]) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let config = Config::parse();
-    let stats = simulate(config.n, config.m, config.steps, config.size);
+    let stats = simulate(config.n, config.m, config.steps, config.size).await;
 
     plot_stats(&stats).expect("Unable to plot");
 
